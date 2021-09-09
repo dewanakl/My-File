@@ -63,6 +63,7 @@ if (isset($_POST['submit'])) {
         if (!empty($file_path) && file_exists($file_path)) {
             if (unlink($file_path)) {
                 header("Location: index.php");
+                exit;
             } else {
                 exit("<script>alert('error !'); window.location = 'index.php';</script>");
             }
