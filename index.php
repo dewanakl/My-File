@@ -80,6 +80,7 @@ if (isset($_POST['submit'])) {
         if (!empty($file_path) && file_exists($file_path)) {
             $download = new ResumeDownload($file_path);
             $download->process();
+            exit;
         } else {
             exit("<script>alert('file not found !'); window.location = 'index.php';</script>");
         }
