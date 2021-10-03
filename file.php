@@ -17,7 +17,7 @@ class ViewDownload
 
         if (!is_file($file)) {
             header("HTTP/1.1 400 Invalid Request");
-            exit('file not found');
+            exit('Invalid Request');
         }
 
         header("Last-Modified: " . gmdate("D, d M Y H:i:s", filemtime($file)) . " GMT");
@@ -54,6 +54,7 @@ class ViewDownload
             header(sprintf('Content-Disposition: attachment; filename="%s"', $this->name));
         }
 
+        set_time_limit(0);
         if ($t > 0) {
             header("HTTP/1.1 206 Partial content");
             $t === 1 ? $this->pushSingle($range) : $this->pushMulti($ranges);
@@ -62,8 +63,8 @@ class ViewDownload
             $this->readFile();
         }
 
-        fclose($this->file);
         flush();
+        fclose($this->file);
     }
 
     private function pushSingle($range)
