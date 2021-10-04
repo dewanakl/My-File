@@ -20,29 +20,19 @@ function formatBytes($size, $precision = 1)
     return round(pow(1024, $base - floor($base)), $precision) . ' ' . $suffixes[floor($base)];
 }
 
-// function to calculate folder size
-function dirSize($directory)
-{
-    $size = 0;
-    $files = glob($directory . '*');
-    foreach ($files as $path) {
-        if (is_file($path)) {
-            $size += filesize($path);
-        }
-    }
-    return $size;
-}
-
 // function show alert info
 function alertInfo($msg)
 {
     exit("<script>alert('{$msg}'); window.location = 'index.php';</script>");
 }
 
+// calculate folder size
+$dirSize = array_sum(array_map("filesize", glob(dirSave . "*")));
+
 // when uploading files
 if (isset($_POST['upload'])) {
     $showstatus = "";
-    if (dirSize(dirSave) <= folderSize) {
+    if ($dirSize <= folderSize) {
         $amount = count($_FILES['file']['name']);
         for ($i = 0; $i < $amount; $i++) {
             $fileName = $_FILES['file']['name'][$i];
@@ -142,22 +132,15 @@ if (isset($_POST['url'])) {
 }
 
 // show information
-$size = dirSize(dirSave);
-$formatfolderSize = formatBytes(folderSize);
-$formatmaxfileSize = formatBytes(maxfileSize);
-if ($size == 0) {
-    $usage = '0 / ' . $formatfolderSize . ' | 0%';
+if ($dirSize == 0) {
+    $usage = '0 / ' . formatBytes(folderSize) . ' | 0%';
     $disabledinput = false;
-    $showtabel = 'display: none;';
-} else if ($size < (folderSize - (folderSize * 0.0005))) { // 0.05% of storage
-    $percent = round(($size / folderSize) * 100, 0);
-    $usage = formatBytes($size) . ' / ' . $formatfolderSize . ' | ' . $percent . '%';
+} else if ($dirSize < (folderSize - (folderSize * 0.0005))) { // 0.05% of storage
+    $usage = formatBytes($dirSize) . ' / ' . formatBytes(folderSize) . ' | ' . round(($dirSize / folderSize) * 100, 0) . '%';
     $disabledinput = false;
-    $showtabel = 'width: 100%;';
 } else {
     $usage = 'FULL STORAGE !';
     $disabledinput = true;
-    $showtabel = 'width: 100%;';
 }
 ?>
 <!DOCTYPE html>
@@ -297,11 +280,12 @@ if ($size == 0) {
 
 <body>
     <h2 id="top">My-<i>File</i> | simple storage</h2>
-    <p style="display: inline;">Current usage : <?= $usage ?></p>
-    <button style="display: inline; padding: 7px 14px;" onclick="modalupload.style.display = 'block'">Upload file</button>
-    <button style="display: inline; padding: 7px 14px;" onclick="modalurl.style.display = 'block'">From url</button>
+    <p style="display: block;">Current usage : <?= $usage ?></p>
+    <?php if (!($disabledinput)) : ?>
+        <button style="display: inline; padding: 7px 14px;" onclick="modalupload.style.display = 'block'">Upload file</button>
+        <button style="display: inline; padding: 7px 14px;" onclick="modalurl.style.display = 'block'">From url</button>
+    <?php endif ?>
     <button style="display: inline; padding: 7px 14px;" onclick="location.href='paste.php'">Paste it</button>
-    <hr>
     <?php if (isset($_COOKIE['infofile'])) : ?>
         <?php
         // show info upload
@@ -311,55 +295,54 @@ if ($size == 0) {
         $replace4 = str_replace("=2", "[ file already exists ! ] <span>&#x274C;</span>", $replace3);
         $replace = str_replace("=3", "[ file too big ! ] <span>&#x274C;</span>", $replace4);
         ?>
-        <div style="position: relative; text-align: left;">
+        <hr>
+        <h3 style="margin-top: 0px; margin-bottom: 0px;">Status :</h3>
+        <div style="overflow-x:auto;">
             <pre style="font-family: 'Times New Roman'"><?= $replace ?></pre>
         </div>
-        <hr>
     <?php endif; ?>
-    <table style="<?= $showtabel ?>">
-        <tr>
-            <th>No</th>
-            <th>Name</th>
-            <th>Size</th>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Action</th>
-        </tr>
-        <?php $no = 1; ?>
-        <?php foreach (glob(dirSave . '*') as $file) : ?>
-            <?php if (is_file($file)) : ?>
-                <?php
-                $file = substr($file, strlen(dirSave));
-                $showname = substr($file, 0, 35);
-                if (strlen($file) >= 35) {
-                    $showname .= '...';
-                }
-                ?>
-                <tr id="<?= $no ?>">
-                    <td><?= $no ?></td>
-                    <td><?= $showname ?></td>
-                    <td><?= formatBytes(filesize(dirSave . $file)) ?></td>
-                    <td><?= date("d-M-Y", filemtime(dirSave . $file)) ?></td>
-                    <td><?= date("H:i:s", filemtime(dirSave . $file)) ?></td>
-                    <td>
-                        <button onclick="location.href='file.php/<?= rawurlencode($file) ?>?download'">Download</button>
-                        <button onclick="window.open('file.php/<?= rawurlencode($file) ?>', '_blank')">View</button>
-                        <button onclick="Delete('<?= rawurlencode($file) ?>', <?= $no++ ?>)">Delete</button>
-                    </td>
-                </tr>
-            <?php endif; ?>
-        <?php endforeach; ?>
-    </table>
+    <hr>
+    <div style="overflow-x:auto;">
+        <table style="width: 100%;">
+            <tr>
+                <th>No</th>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Action</th>
+            </tr>
+            <?php $no = 1; ?>
+            <?php foreach (glob(dirSave . '*') as $file) : ?>
+                <?php if (is_file($file)) : ?>
+                    <?php
+                    $file = substr($file, strlen(dirSave));
+                    ?>
+                    <tr id="s<?= $no ?>">
+                        <td><?= $no ?></td>
+                        <td><?= substr($file, 0, 35) ?></td>
+                        <td><?= formatBytes(filesize(dirSave . $file)) ?></td>
+                        <td><?= date("d-M-Y", filemtime(dirSave . $file)) ?></td>
+                        <td><?= date("H:i:s", filemtime(dirSave . $file)) ?></td>
+                        <td>
+                            <button onclick="location.href='file.php/<?= rawurlencode($file) ?>?download'">Download</button>
+                            <button onclick="window.open('file.php/<?= rawurlencode($file) ?>', '_blank')">View</button>
+                            <button onclick="Delete('<?= rawurlencode($file) ?>', <?= $no++ ?>)">Delete</button>
+                        </td>
+                    </tr>
+                <?php endif; ?>
+            <?php endforeach; ?>
+        </table>
+    </div>
     <?php if (!($disabledinput)) : ?>
         <div id="Modalupload" class="modal">
             <div class="modal-content">
                 <span class="close">&times;</span>
                 <h2>Upload file</h2>
                 <hr style="margin-bottom: 25px;">
-                <form action="index.php" method="post" enctype="multipart/form-data">
+                <form method="post" enctype="multipart/form-data">
+                    <p>*maximum upload file size : <?= formatBytes(maxfileSize) ?></p>
                     <input type="file" onchange="fileValidation()" name="file[]" id="uploadFile" multiple required>
-                    <br>
-                    <p>*maximum upload file size : <?= $formatmaxfileSize ?></p>
                     <hr style="margin-bottom: 25px; margin-top: 25px;">
                     <input type="submit" onclick="Submit('upload')" style="padding: 12px 24px;" name="upload" value="Upload">
                 </form>
@@ -370,8 +353,8 @@ if ($size == 0) {
                 <span class="close">&times;</span>
                 <h2>Save from url</h2>
                 <hr style="margin-bottom: 25px;">
-                <form action="index.php" method="post">
-                    URL :
+                <form method="post">
+                    <p>URL :</p>
                     <input type="url" name="link" style="width: 50%;">
                     <hr style="margin-bottom: 25px; margin-top: 25px;">
                     <input type="submit" onclick="Submit('url')" style="padding: 12px 24px;" name="url" value="Save">
@@ -414,7 +397,7 @@ if ($size == 0) {
                 if (total > <?= maxfileSize ?>) {
                     alert("file too big !");
                     window.location = "index.php";
-                } else if (total > <?= folderSize - $size ?>) {
+                } else if (total > <?= folderSize - $dirSize ?>) {
                     alert("no space !");
                     window.location = "index.php";
                 }
@@ -438,7 +421,7 @@ if ($size == 0) {
         // delete
         function Delete(file, id) {
             if (confirm("delete this file? : " + decodeURIComponent(file).slice(0, 35))) {
-                location.href = "index.php?delete&file=" + file + "#" + (id - 1);
+                location.href = "index.php?delete&file=" + file + "#s" + (id - 1);
             }
         }
 
