@@ -282,7 +282,7 @@ if ($dirSize == 0) {
     <h2 id="top">My-<i>File</i> | simple storage</h2>
     <p style="display: block;">Current usage : <?= $usage ?></p>
     <?php if (!($disabledinput)) : ?>
-        <button style="display: inline; padding: 7px 14px;" onclick="modalupload.style.display = 'block'">Upload file</button>
+        <button style="display: inline; padding: 7px 14px;" onclick="modalupload.style.display = 'block'">Upload</button>
         <button style="display: inline; padding: 7px 14px;" onclick="modalurl.style.display = 'block'">From url</button>
     <?php endif ?>
     <button style="display: inline; padding: 7px 14px;" onclick="location.href='paste.php'">Paste it</button>
@@ -341,8 +341,8 @@ if ($dirSize == 0) {
                 <h2>Upload file</h2>
                 <hr style="margin-bottom: 25px;">
                 <form method="post" enctype="multipart/form-data">
-                    <p>*maximum upload file size : <?= formatBytes(maxfileSize) ?></p>
-                    <input type="file" onchange="fileValidation()" name="file[]" id="uploadFile" multiple required>
+                    <p>Max file size : <?= formatBytes(maxfileSize) ?></p>
+                    <input type="file" onchange="fileValidation()" name="file[]" id="uploadFile" style="width: 75%;" multiple required>
                     <hr style="margin-bottom: 25px; margin-top: 25px;">
                     <input type="submit" onclick="Submit('upload')" style="padding: 12px 24px;" name="upload" value="Upload">
                 </form>
@@ -354,8 +354,8 @@ if ($dirSize == 0) {
                 <h2>Save from url</h2>
                 <hr style="margin-bottom: 25px;">
                 <form method="post">
-                    <p>URL :</p>
-                    <input type="url" name="link" style="width: 50%;">
+                    <p>Enter URL :</p>
+                    <input type="url" name="link" style="width: 75%;">
                     <hr style="margin-bottom: 25px; margin-top: 25px;">
                     <input type="submit" onclick="Submit('url')" style="padding: 12px 24px;" name="url" value="Save">
                 </form>
