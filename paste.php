@@ -1,12 +1,15 @@
 <?php
+// require config
+require_once 'config.php';
+
 // check folder permissions
-if (!is_writable("paste.txt")) {
+if (!is_writable(paste)) {
     exit("please change file permissions");
 }
 
 // write file
 if (isset($_POST['text'])) {
-    $fp = fopen("paste.txt", "w");
+    $fp = fopen(paste, "w");
     fwrite($fp, $_POST['text']);
     fclose($fp);
     exit;
@@ -67,7 +70,7 @@ if (isset($_POST['text'])) {
     <button style="display: inline; padding: 7px 14px;" onclick="location.href='index.php'">Back</button>
     <p style="display: inline; padding: 7px 14px;" id="message"></p>
     <hr>
-    <textarea id="val" oninput="save();" style="max-width:100%; min-height:<?= count(file("paste.txt")) / 5 * 3 ?>cm; height:100%; width:100%;" spellcheck="false"><?= htmlspecialchars(file_get_contents("paste.txt")) ?></textarea>
+    <textarea id="val" oninput="save();" style="max-width:100%; min-height:<?= count(file(paste)) / 5 * 3 ?>cm; height:100%; width:100%;" spellcheck="false"><?= htmlspecialchars(file_get_contents(paste)) ?></textarea>
     <a id="topbtn" href="#top" style="text-decoration:none; display: none;">TOP</a>
     <hr>
     <footer style="text-align: center;">

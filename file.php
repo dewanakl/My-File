@@ -9,15 +9,18 @@ class ViewDownload
     private $boundary;
     private $size = 0;
     private $type;
+    private $fdownload = false;
 
     function __construct($dir)
     {
         $p = pathinfo($_SERVER['PATH_INFO']);
+        $d = isset($_GET['download']);
+
         $file = $dir . $p['basename'];
 
         if (!is_file($file)) {
             header("HTTP/1.1 400 Invalid Request");
-            exit('file not found');
+            exit('Invalid Request');
         }
 
         header("Last-Modified: " . gmdate("D, d M Y H:i:s", filemtime($file)) . " GMT");
@@ -25,7 +28,7 @@ class ViewDownload
 
         if (strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) == filemtime($file) || trim($_SERVER['HTTP_IF_NONE_MATCH']) == md5_file($file)) {
             Header("HTTP/1.1 304 Not Modified");
-            exit();
+            exit;
         }
 
         $this->file = fopen($file, "r");
@@ -33,12 +36,14 @@ class ViewDownload
         $this->boundary = md5($file);
         $this->size = filesize($file);
         $this->type = $p['extension'];
+        $this->fdownload = $d;
     }
 
     public function process()
     {
         $ranges = NULL;
         $t = 0;
+        $typefile = $this->ftype();
 
         if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_SERVER['HTTP_RANGE']) && $range = stristr(trim($_SERVER['HTTP_RANGE']), 'bytes=')) {
             $range = substr($range, 6);
@@ -47,21 +52,26 @@ class ViewDownload
         }
 
         header("Accept-Ranges: bytes");
-        header("Content-type: " . $this->type());
+        header("Content-Type: " . $typefile);
 
-        if ($this->type() == "application/octet-stream") {
-            header("Content-Transfer-Encoding: binary");
+        if ($typefile == "application/octet-stream") {
             header(sprintf('Content-Disposition: attachment; filename="%s"', $this->name));
+            header("Content-Transfer-Encoding: binary");
         }
 
         if ($t > 0) {
-            header("HTTP/1.1 206 Partial content");
-            $t === 1 ? $this->pushSingle($range) : $this->pushMulti($ranges);
+            header("HTTP/1.1 206 Partial Content");
+            if ($t === 1) {
+                $this->pushSingle($range);
+            } else {
+                $this->pushMulti($ranges);
+            }
         } else {
             header("Content-Length: " . $this->size);
             $this->readFile();
         }
 
+        flush();
         fclose($this->file);
     }
 
@@ -79,8 +89,8 @@ class ViewDownload
     private function pushMulti($ranges)
     {
         $length = $start = $end = 0;
-        $tl = "Content-type: " . $this->type() . "\r\n";
-        $formatRange = "Content-range: bytes %d-%d/%d\r\n\r\n";
+        $tl = "Content-Type: " . $this->ftype() . "\r\n";
+        $formatRange = "Content-Range: bytes %d-%d/%d\r\n\r\n";
 
         foreach ($ranges as $range) {
             $this->getRange($range, $start, $end);
@@ -91,8 +101,8 @@ class ViewDownload
         }
 
         $length += strlen("\r\n--$this->boundary--\r\n");
+        header("Content-Type: multipart/byteranges; boundary=$this->boundary");
         header("Content-Length: $length");
-        header("Content-Type: multipart/x-byteranges; boundary=$this->boundary");
 
         foreach ($ranges as $range) {
             $this->getRange($range, $start, $end);
@@ -115,17 +125,19 @@ class ViewDownload
             $tmp = $end;
             $end = $fileSize - 1;
             $start = $fileSize - $tmp;
-            if ($start < 0)
+            if ($start < 0) {
                 $start = 0;
+            }
         } else {
-            if ($end == '' || $end > $fileSize - 1)
+            if ($end == '' || $end > $fileSize - 1) {
                 $end = $fileSize - 1;
+            }
         }
 
         if ($start > $end) {
-            header("Status: 416 Requested range not satisfiable");
+            header("Status: 416 Requested Range Not Satisfiable");
             header("Content-Range: */" . $fileSize);
-            exit();
+            exit;
         }
 
         return array($start, $end);
@@ -143,64 +155,50 @@ class ViewDownload
     {
         $bytesLeft = $bytes;
         while ($bytesLeft > 0 && !feof($this->file)) {
-            $bytesLeft > $size ? $bytesRead = $size : $bytesRead = $bytesLeft;
+            if ($bytesLeft > $size) {
+                $bytesRead = $size;
+            } else {
+                $bytesRead = $bytesLeft;
+            }
             $bytesLeft -= $bytesRead;
             echo fread($this->file, $bytesRead);
             flush();
         }
     }
 
-    private function type()
+    private function ftype()
     {
-        if (isset($_GET['download'])) {
+        if ($this->fdownload) {
             return "application/octet-stream";
         } else {
-            switch ($this->type) {
-                case "gif":
-                    return "image/gif";
-                    break;
-                case "png":
-                    return "image/png";
-                    break;
-                case "jpeg":
-                    return "image/jpeg";
-                    break;
-                case "jpg":
-                    return "image/jpeg";
-                    break;
-                case "svg":
-                    return "image/svg+xml";
-                    break;
-                case "bmp":
-                    return "image/bmp";
-                    break;
-                case "ico":
-                    return "image/ico";
-                    break;
-                case "js":
-                    return "application/javascript";
-                    break;
-                case "css":
-                    return "text/css";
-                    break;
-                case "pdf":
-                    return "application/pdf";
-                    break;
-                case "mp3":
-                    return "audio/mpeg";
-                    break;
-                case "mp4":
-                    return "video/mp4";
-                    break;
-                case "mkv":
-                    return "video/mp4";
-                    break;
-                case "txt":
-                    return "text/plain";
-                    break;
-                default:
-                    return "application/octet-stream";
-                    break;
+            $mime_types = array(
+                'txt' => 'text/plain',
+                'htm' => 'text/plain',
+                'html' => 'text/plain',
+                'php' => 'text/plain',
+                'css' => 'text/css',
+                'png' => 'image/png',
+                'jpe' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'jpg' => 'image/jpeg',
+                'gif' => 'image/gif',
+                'bmp' => 'image/bmp',
+                'ico' => 'image/ico',
+                'tiff' => 'image/tiff',
+                'tif' => 'image/tiff',
+                'svg' => 'image/svg+xml',
+                'svgz' => 'image/svg+xml',
+                'mp4' => 'video/mp4',
+                'mkv' => 'video/mp4',
+                'mp3' => 'audio/mpeg',
+                'js' => 'application/javascript',
+                'json' => 'application/json',
+                'pdf' => 'application/pdf'
+            );
+            if (empty($mime_types[$this->type])) {
+                return "application/octet-stream";
+            } else {
+                return $mime_types[$this->type];
             }
         }
     }
