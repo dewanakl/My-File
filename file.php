@@ -22,18 +22,19 @@ class File
         $file = $dir . $p['basename'];
 
         if (!is_file($file)) {
-            header("HTTP/1.1 400 Invalid Request");
-            echo 'Invalid Request';
+            header("HTTP/1.1 404 Not Found");
+            echo 'Not Found';
             exit;
         }
 
-        $hashFile = md5($file);
         $timeFile = filemtime($file);
+        $hashFile = md5($file);
 
+        header("Cache-Control: public");
         header("Last-Modified: " . gmdate("D, d M Y H:i:s", $timeFile) . " GMT");
         header("Etag: " . $hashFile);
 
-        if (strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) == $timeFile || trim($_SERVER['HTTP_IF_NONE_MATCH']) == $hashFile) {
+        if (@strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) == $timeFile || @trim($_SERVER['HTTP_IF_NONE_MATCH']) == $hashFile) {
             header("HTTP/1.1 304 Not Modified");
             exit;
         }
