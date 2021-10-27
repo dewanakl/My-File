@@ -27,22 +27,23 @@ class File
             exit;
         }
 
-        $timeFile = filemtime($file);
-        $hashFile = md5($file);
+        $timeFile = @filemtime($file);
+        $hashFile = @md5($file);
 
         header("Cache-Control: public");
-        header("Last-Modified: " . gmdate("D, d M Y H:i:s", $timeFile) . " GMT");
-        header("Etag: " . $hashFile);
 
         if (@strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) == $timeFile || @trim($_SERVER['HTTP_IF_NONE_MATCH']) == $hashFile) {
             header("HTTP/1.1 304 Not Modified");
             exit;
+        } else {
+            header("Last-Modified: " . gmdate("D, d M Y H:i:s", $timeFile) . " GMT");
+            header("Etag: " . $hashFile);
         }
 
-        $this->file = fopen($file, "r");
-        $this->name = basename($file);
+        $this->file = @fopen($file, "r");
+        $this->name = @basename($file);
         $this->boundary = $hashFile;
-        $this->size = filesize($file);
+        $this->size = @filesize($file);
         $this->ftype($p['extension'], $d);
     }
 
@@ -51,8 +52,8 @@ class File
         $ranges = null;
         $t = 0;
 
-        if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_SERVER['HTTP_RANGE']) && $range = stristr(trim($_SERVER['HTTP_RANGE']), 'bytes=')) {
-            $range = substr($range, 6);
+        if ($_SERVER['REQUEST_METHOD'] == 'GET' && isset($_SERVER['HTTP_RANGE'])) {
+            $range = substr(stristr(trim($_SERVER['HTTP_RANGE']), 'bytes='), 6);
             $ranges = explode(',', $range);
             $t = count($ranges);
         }
@@ -99,26 +100,27 @@ class File
 
         foreach ($ranges as $range) {
             $this->getRange($range, $start, $end);
-            $length += strlen("\r\n--$this->boundary\r\n");
+            $length += strlen("\r\n--" . $this->boundary . "\r\n");
             $length += strlen($tl);
             $length += strlen(sprintf($formatRange, $start, $end, $this->size));
             $length += $end - $start + 1;
         }
 
-        $length += strlen("\r\n--$this->boundary--\r\n");
-        header("Content-Type: multipart/byteranges; boundary=$this->boundary");
-        header("Content-Length: $length");
+        $length += strlen("\r\n--" . $this->boundary . "--\r\n");
+
+        header("Content-Type: multipart/byteranges; boundary=" . $this->boundary);
+        header("Content-Length: " . $length);
 
         foreach ($ranges as $range) {
             $this->getRange($range, $start, $end);
-            echo "\r\n--$this->boundary\r\n";
+            echo "\r\n--" . $this->boundary . "\r\n";
             echo $tl;
             echo sprintf($formatRange, $start, $end, $this->size);
             fseek($this->file, $start);
             $this->readBuffer($end - $start + 1);
         }
 
-        echo "\r\n--$this->boundary--\r\n";
+        echo "\r\n--" . $this->boundary . "--\r\n";
     }
 
     private function getRange($range, &$start, &$end)
@@ -156,7 +158,7 @@ class File
         }
     }
 
-    private function readBuffer($bytes, $size = 1024)
+    private function readBuffer($bytes, $size = 1024 * 1024)
     {
         $bytesLeft = $bytes;
         while ($bytesLeft > 0 && !feof($this->file)) {
