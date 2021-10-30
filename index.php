@@ -20,6 +20,14 @@ function formatBytes($size, $precision = 1)
     return round(pow(1024, $base - floor($base)), $precision) . ' ' . $suffixes[floor($base)];
 }
 
+// rename filename
+function filename_sanitizer($unsafeFilename)
+{
+    $dangerousCharacters = array('"', ":", "&", "/", "\\", "?", "*", "<", ">", "|", "%", "{", "}", "`", "#");
+    $safe_filename = str_replace($dangerousCharacters, '', $unsafeFilename);
+    return $safe_filename;
+}
+
 // function show alert info
 function alertInfo($msg)
 {
@@ -35,21 +43,21 @@ if (isset($_POST['upload'])) {
     if ($dirSize <= folderSize) {
         $amount = count($_FILES['file']['name']);
         for ($i = 0; $i < $amount; $i++) {
-            $fileName = $_FILES['file']['name'][$i];
+            $fileName = filename_sanitizer($_FILES['file']['name'][$i]);
             if ($_FILES['file']['size'][$i] <= maxfileSize) {
                 if (!file_exists(dirSave . $fileName)) {
                     $temp = $_FILES['file']['tmp_name'][$i];
                     $status = move_uploaded_file($temp, dirSave . $fileName);
                     if ($status) {
-                        $showstatus .= substr($fileName, 0, 15) .  " =0" . " | ";
+                        $showstatus .= $fileName .  " =0 | ";
                     } else {
-                        $showstatus .= substr($fileName, 0, 15) .  " =1" . " | ";
+                        $showstatus .= $fileName .  " =1 | ";
                     }
                 } else {
-                    $showstatus .= substr($fileName, 0, 15) .  " =2" . " | ";
+                    $showstatus .= $fileName .  " =2 | ";
                 }
             } else {
-                $showstatus .= substr($fileName, 0, 15) . " =3" . " | ";
+                $showstatus .= $fileName . " =3 | ";
             }
         }
     } else {
@@ -60,45 +68,57 @@ if (isset($_POST['upload'])) {
 
 // when deleting a file
 if (isset($_GET['delete'])) {
-    if (isset($_GET['file'])) {
-        $file_path = dirSave . $_GET['file'];
-        if (!empty($file_path) && file_exists($file_path)) {
-            if (unlink($file_path)) {
-                header("Location: index.php");
-                exit;
-            } else {
-                alertInfo("error delete !");
-            }
+    $varFile = $_GET['file'];
+    if (isset($varFile) && file_exists(dirSave . $varFile)) {
+        if (unlink(dirSave . $varFile)) {
+            exit("<script>document.cookie = 'infofile = " . rawurlencode($varFile . " =4 | ") . "'; window.location = 'index.php';</script>");
         } else {
-            alertInfo("file not found !");
+            alertInfo("server error !");
         }
     } else {
         alertInfo("failed to delete !");
     }
 }
 
+// when rename a file
+if (isset($_GET['rename'])) {
+    $varOldFile = $_GET['old'];
+    $varNewFile = filename_sanitizer($_GET['new']);
+    if (isset($varOldFile) && isset($varNewFile) && $varNewFile != '') {
+        if (!file_exists(dirSave . $varNewFile)) {
+            if (file_exists(dirSave . $varOldFile)) {
+                if (rename(dirSave . $varOldFile, dirSave . $varNewFile)) {
+                    exit("<script>document.cookie = 'infofile = " . rawurlencode($varNewFile . " =5 | ") . "'; window.location = 'index.php';</script>");
+                } else {
+                    alertInfo("server error !");
+                }
+            } else {
+                alertInfo("file not found !");
+            }
+        } else {
+            alertInfo("filename must be different !");
+        }
+    } else {
+        alertInfo("rename failed !");
+    }
+}
+
+// when from url
 if (isset($_POST['url'])) {
-
-    $file_url = $_POST['link'];
-    $url = filter_var($file_url, FILTER_SANITIZE_URL);
-
-    if ((empty($file_url)) || (filter_var($url, FILTER_VALIDATE_URL) === false)) {
+    $file_url = filter_var($_POST['link'], FILTER_SANITIZE_URL);
+    if ((empty($file_url)) || (filter_var($file_url, FILTER_VALIDATE_URL) === false)) {
         alertInfo("Invalid URL !");
     }
-
-    $path = parse_url($file_url, PHP_URL_PATH);
-    $file_name = basename($path);
-    $file_ext = pathinfo($file_url, PATHINFO_EXTENSION);
-    $file_ext = strtolower($file_ext);
-
+    $file_name = basename(parse_url($file_url, PHP_URL_PATH));
+    $file_ext = strtolower(pathinfo($file_url, PATHINFO_EXTENSION));
     if (empty($file_name)) {
         alertInfo("Invalid file name !");
+    } else {
+        $file_name = filename_sanitizer($file_name);
     }
-
     if (strpos($file_ext, '?') !== false) {
         $file_ext = substr($file_ext, 0, strpos($file_ext, '?'));
     }
-
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $file_url);
     curl_setopt($ch, CURLOPT_USERAGENT, $_SERVER['HTTP_USER_AGENT']);
@@ -106,10 +126,8 @@ if (isset($_POST['url'])) {
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
     $raw = curl_exec($ch);
-
     $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curl_error = curl_error($ch);
     curl_close($ch);
@@ -122,13 +140,17 @@ if (isset($_POST['url'])) {
     $saveto = dirSave . $file_name;
 
     if (file_exists($saveto)) {
-        @unlink($saveto);
+        $showstatus = $file_name .  " [ file exists ] <span>&#x274C;</span>";
+        exit("<script>document.cookie = 'infofile = " . rawurlencode($showstatus) . "'; window.location = 'index.php';</script>");
     }
 
-    @file_put_contents($saveto, $raw);
-
-    $showstatus = $file_name .  " [ successful ] <span>&#x2705;</span>";
-    exit("<script>document.cookie = 'infofile = " . rawurlencode($showstatus) . "'; window.location = 'index.php';</script>");
+    if (file_put_contents($saveto, $raw)) {
+        $showstatus = $file_name .  " [ successful ] <span>&#x2705;</span>";
+        exit("<script>document.cookie = 'infofile = " . rawurlencode($showstatus) . "'; window.location = 'index.php';</script>");
+    } else {
+        $showstatus = $file_name .  " [ falied ] <span>&#x274C;</span>";
+        exit("<script>document.cookie = 'infofile = " . rawurlencode($showstatus) . "'; window.location = 'index.php';</script>");
+    }
 }
 
 // show information
@@ -289,7 +311,7 @@ if ($dirSize == 0) {
         <button style="display: inline; padding: 7px 14px;" onclick="modalupload.style.display = 'block'">Upload</button>
         <button style="display: inline; padding: 7px 14px;" onclick="modalurl.style.display = 'block'">From url</button>
     <?php endif ?>
-    <button style="display: inline; padding: 7px 14px;" onclick="location.href='paste.php'">Paste it</button>
+    <button style="display: inline; padding: 7px 14px;" onclick="window.location = 'paste.php'">Paste it</button>
     <?php if (isset($_COOKIE['infofile'])) : ?>
         <?php
         // show info upload
@@ -297,7 +319,9 @@ if ($dirSize == 0) {
         $replace2 = str_replace("=0", "[ upload successful ! ] <span>&#x2705;</span>", $replace1);
         $replace3 = str_replace("=1", "[ failed to upload ! ] <span>&#x274C;</span>", $replace2);
         $replace4 = str_replace("=2", "[ file already exists ! ] <span>&#x274C;</span>", $replace3);
-        $replace = str_replace("=3", "[ file too big ! ] <span>&#x274C;</span>", $replace4);
+        $replace5 = str_replace("=3", "[ file too big ! ] <span>&#x274C;</span>", $replace4);
+        $replace6 = str_replace("=4", "[ delete ] <span>&#x2705;</span>", $replace5);
+        $replace = str_replace("=5", "[ rename ] <span>&#x2705;</span>", $replace6);
         ?>
         <hr>
         <h3 style="margin-top: 0px; margin-bottom: 0px;">Status :</h3>
@@ -316,22 +340,28 @@ if ($dirSize == 0) {
                 <th>Time</th>
                 <th>Action</th>
             </tr>
-            <?php $no = 1; ?>
+            <?php $no = 1 ?>
             <?php foreach (glob(dirSave . '*') as $file) : ?>
                 <?php if (is_file($file)) : ?>
                     <?php
                     $file = substr($file, strlen(dirSave));
+                    if ((strtotime(date("d-M-Y H:i:s")) - strtotime(date("d-M-Y H:i:s", filemtime(dirSave . $file)))) <= (5 * 60)) {
+                        $filenew = ' <span style="background: black; color: white; padding: 0 10px 0 10px;">new</span>';
+                    } else {
+                        $filenew = "";
+                    }
                     ?>
-                    <tr id="s<?= $no ?>">
-                        <td><?= $no ?></td>
-                        <td><?= $file ?></td>
+                    <tr>
+                        <td><?= $no++ ?></td>
+                        <td><?= htmlspecialchars($file) . $filenew ?></td>
                         <td><?= formatBytes(filesize(dirSave . $file)) ?></td>
                         <td><?= date("d-M-Y", filemtime(dirSave . $file)) ?></td>
                         <td><?= date("H:i:s", filemtime(dirSave . $file)) ?></td>
                         <td>
-                            <button onclick="location.href='file.php/<?= rawurlencode($file) ?>?download'">Download</button>
                             <button onclick="window.open('file.php/<?= rawurlencode($file) ?>', '_blank')">View</button>
-                            <button onclick="Delete('<?= rawurlencode($file) ?>', <?= $no++ ?>)">Delete</button>
+                            <button onclick="window.location = 'file.php/<?= rawurlencode($file) ?>?download'">Download</button>
+                            <button onclick="Rename('<?= rawurlencode($file) ?>')">Rename</button>
+                            <button onclick="Delete('<?= rawurlencode($file) ?>')">Delete</button>
                         </td>
                     </tr>
                 <?php endif ?>
@@ -344,9 +374,9 @@ if ($dirSize == 0) {
                 <span class="close">&times;</span>
                 <h2>Upload file</h2>
                 <hr style="margin-bottom: 25px;">
-                <form method="post" enctype="multipart/form-data">
+                <form id="formUploadFile" method="post" enctype="multipart/form-data">
                     <p>Max file size : <?= formatBytes(maxfileSize) ?></p>
-                    <input type="file" onchange="fileValidation()" name="file[]" id="uploadFile" style="width: 75%;" multiple required>
+                    <input type="file" onchange="fileValidation()" name="file[]" id="uploadFile" style="width: 50%;" multiple required />
                     <hr style="margin-bottom: 25px; margin-top: 25px;">
                     <input type="submit" onclick="Submit('upload')" style="padding: 12px 24px;" name="upload" value="Upload">
                 </form>
@@ -361,7 +391,7 @@ if ($dirSize == 0) {
                     <p>Enter URL :</p>
                     <input type="url" name="link" style="width: 75%;">
                     <hr style="margin-bottom: 25px; margin-top: 25px;">
-                    <input type="submit" onclick="Submit('url')" style="padding: 12px 24px;" name="url" value="Save">
+                    <input type="submit" onclick="Submit('url')" style="padding: 12px 24px;" name="url" value="Save" />
                 </form>
             </div>
         </div>
@@ -387,26 +417,31 @@ if ($dirSize == 0) {
     </footer>
     <script>
         <?php if (isset($replace)) : ?>
+            // delete cookie
             document.cookie = 'infofile=; Max-Age=0;';
         <?php endif ?>
+
         <?php if (!($disabledinput)) : ?>
+
             // validasi
             function fileValidation() {
-                var uf = document.getElementById('uploadFile');
+                let uf = document.getElementById('uploadFile');
+                let form = document.getElementById("formUploadFile");
                 if (uf.files.length > 0) {
-                    var total = 0;
-                    for (var i = 0; i <= uf.files.length - 1; i++) {
+                    let total = 0;
+                    for (let i = 0; i <= uf.files.length - 1; i++) {
                         total += uf.files.item(i).size;
                     }
                     if (total > <?= maxfileSize ?>) {
+                        form.reset();
                         alert("file too big !");
-                        window.location = "index.php";
                     } else if (total > <?= folderSize - $dirSize ?>) {
+                        form.reset();
                         alert("no space !");
-                        window.location = "index.php";
                     }
                 }
             }
+
             // add file
             function Submit(prm) {
                 if (prm == 'upload') {
@@ -414,18 +449,18 @@ if ($dirSize == 0) {
                         document.getElementById("Modalupload").style.display = "none";
                         document.getElementById("Modalloader").style.display = "block";
                     }
-                }
-                if (prm == 'url') {
+                } else if (prm == 'url') {
                     document.getElementById("Modalurl").style.display = "none";
                     document.getElementById("Modalloader").style.display = "block";
                 }
             }
-            // modal
-            var modalupload = document.getElementById("Modalupload");
-            var modalurl = document.getElementById("Modalurl");
 
-            var span1 = document.getElementsByClassName("close")[0];
-            var span2 = document.getElementsByClassName("close")[1];
+            // modal
+            let modalupload = document.getElementById("Modalupload");
+            let modalurl = document.getElementById("Modalurl");
+            let span1 = document.getElementsByClassName("close")[0];
+            let span2 = document.getElementsByClassName("close")[1];
+
             span1.onclick = function() {
                 modalupload.style.display = "none";
             }
@@ -441,13 +476,35 @@ if ($dirSize == 0) {
                     modalurl.style.display = "none";
                 }
             }
+
         <?php endif ?>
+
         // delete
-        function Delete(file, id) {
-            if (confirm("delete this file? : " + decodeURIComponent(file))) {
-                location.href = "index.php?delete&file=" + file + "#s" + (id - 1);
+        function Delete(file) {
+            if (confirm("delete this file ? : " + decodeURIComponent(file))) {
+                location.href = "index.php?delete&file=" + file;
             }
         }
+
+        // rename
+        function Rename(oldnamefile) {
+            let extfile = "." + oldnamefile.substring(oldnamefile.lastIndexOf(".") + 1);
+            let newnamefile = prompt("Enter new name (" + extfile + ")", decodeURIComponent(oldnamefile.substring(0, oldnamefile.lastIndexOf('.'))));
+            if (newnamefile != null) {
+                if (newnamefile != '') {
+                    if (newnamefile + extfile != decodeURIComponent(oldnamefile)) {
+                        if (confirm("rename this file ? : " + newnamefile + extfile)) {
+                            location.href = "index.php?rename&old=" + oldnamefile + "&new=" + encodeURIComponent(newnamefile + extfile);
+                        }
+                    } else {
+                        alert("no name change !");
+                    }
+                } else {
+                    alert("filename cannot be empty !");
+                }
+            }
+        }
+
         // top
         window.onscroll = function() {
             if (document.body.scrollTop > 40 || document.documentElement.scrollTop > 40) {
