@@ -379,7 +379,10 @@ if ($dirSize == 0) {
                 <th>Time</th>
                 <th>Action</th>
             </tr>
-            <?php $no = 1 ?>
+            <?php
+            $no = 1;
+            $dataNameFile = [];
+            ?>
             <?php foreach (glob(dirSave . '*') as $file) : ?>
                 <?php if (is_file($file)) : ?>
                     <?php
@@ -389,18 +392,19 @@ if ($dirSize == 0) {
                     } else {
                         $filenew = "";
                     }
+                    array_push($dataNameFile, rawurlencode($file));
                     ?>
                     <tr>
-                        <td><?= $no++ ?></td>
+                        <td><?= $no ?></td>
                         <td><?= htmlspecialchars($file) . $filenew ?></td>
                         <td><?= formatBytes(filesize(dirSave . $file)) ?></td>
                         <td><?= date("d-M-Y", filemtime(dirSave . $file)) ?></td>
                         <td><?= date("H:i:s", filemtime(dirSave . $file)) ?></td>
                         <td>
-                            <button onclick="window.open('file.php/<?= rawurlencode($file) ?>', '_blank')">View</button>
-                            <button onclick="window.location = 'file.php/<?= rawurlencode($file) ?>?download'">Download</button>
-                            <button onclick="Rename('<?= rawurlencode($file) ?>')">Rename</button>
-                            <button onclick="Delete('<?= rawurlencode($file) ?>')">Delete</button>
+                            <button onclick="window.open('file.php/' + dataName[<?= $no - 1 ?>], '_blank')">View</button>
+                            <button onclick="window.location = 'file.php/' + dataName[<?= $no - 1 ?>] + '?download'">Download</button>
+                            <button onclick="Rename(dataName[<?= $no - 1 ?>])">Rename</button>
+                            <button onclick="Delete(dataName[<?= $no++ - 1 ?>])">Delete</button>
                         </td>
                     </tr>
                 <?php endif ?>
@@ -459,9 +463,8 @@ if ($dirSize == 0) {
             // delete cookie
             document.cookie = 'infofile=; Max-Age=0;';
         <?php endif ?>
-
+        let dataName = <?= json_encode($dataNameFile) ?>;
         <?php if (!($disabledinput)) : ?>
-
             // validasi
             function fileValidation() {
                 let uf = document.getElementById('uploadFile');
