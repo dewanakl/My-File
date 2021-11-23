@@ -381,7 +381,7 @@ if ($dirSize == 0) {
             </tr>
             <?php
             $no = 1;
-            $dataNameFile = [];
+            $dataNameFile = array();
             ?>
             <?php foreach (glob(dirSave . '*') as $file) : ?>
                 <?php if (is_file($file)) : ?>
@@ -533,7 +533,7 @@ if ($dirSize == 0) {
             let extfile = "." + oldnamefile.substring(oldnamefile.lastIndexOf(".") + 1);
             let newnamefile = prompt("Enter new name (" + extfile + ")", decodeURIComponent(oldnamefile.substring(0, oldnamefile.lastIndexOf('.'))));
             if (newnamefile != null) {
-                if (newnamefile != '') {
+                if (newnamefile != '' && newnamefile != ' ') {
                     if (newnamefile + extfile != decodeURIComponent(oldnamefile)) {
                         if (confirm("rename this file ? : " + newnamefile + extfile)) {
                             location.href = "index.php?rename&old=" + oldnamefile + "&new=" + encodeURIComponent(newnamefile + extfile);
