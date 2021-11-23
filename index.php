@@ -321,7 +321,7 @@ if ($dirSize == 0) {
             cursor: pointer;
         }
 
-        @media screen and (max-width: 500px) {
+        @media screen and (max-width: 525px) {
             .search {
                 float: none;
                 margin-top: 5px;
