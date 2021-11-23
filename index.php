@@ -23,7 +23,8 @@ function formatBytes($size, $precision = 1)
 // rename filename
 function filename_sanitizer($unsafeFilename)
 {
-    $dangerousCharacters = array('"', ":", "&", "/", "\\", "?", "*", "<", ">", "|", "%", "{", "}", "`", "#");
+    // windows characters
+    $dangerousCharacters = array("\\", "/", ":", "*", "?", "\"", "<", ">", "|");
     $safe_filename = str_replace($dangerousCharacters, '', $unsafeFilename);
     return $safe_filename;
 }
@@ -300,6 +301,39 @@ if ($dirSize == 0) {
             cursor: pointer;
         }
 
+        /* search */
+        .search {
+            float: right;
+        }
+
+        .btnsearch {
+            display: none;
+        }
+
+        #mySearch {
+            margin-right: auto;
+            padding: 7px 14px;
+        }
+
+        #mySearch::-webkit-search-cancel-button {
+            position: relative;
+            right: 0px;
+            cursor: pointer;
+        }
+
+        @media screen and (max-width: 500px) {
+            .search {
+                float: none;
+                margin-top: 5px;
+                display: none;
+            }
+
+            .btnsearch {
+                display: inline;
+                padding: 7px 7px;
+            }
+        }
+
         <?php endif ?>
     </style>
 </head>
@@ -312,6 +346,11 @@ if ($dirSize == 0) {
         <button style="display: inline; padding: 7px 14px;" onclick="modalurl.style.display = 'block'">From url</button>
     <?php endif ?>
     <button style="display: inline; padding: 7px 14px;" onclick="window.location = 'paste.php'">Paste it</button>
+    <button class="btnsearch" onclick="Sbox()">Search</button>
+    <div class="search" id="searchbox">
+        <p style="display: inline; margin: 0px;">Search : </p>
+        <input type="search" id="mySearch" oninput="Search()" placeholder="Search for names..">
+    </div>
     <?php if (isset($_COOKIE['infofile'])) : ?>
         <?php
         // show info upload
@@ -331,7 +370,7 @@ if ($dirSize == 0) {
     <?php endif ?>
     <hr>
     <div style="overflow-x:auto;">
-        <table style="width: 100%;">
+        <table style="width: 100%;" id="myTable">
             <tr>
                 <th>No</th>
                 <th>Name</th>
@@ -502,6 +541,35 @@ if ($dirSize == 0) {
                 } else {
                     alert("filename cannot be empty !");
                 }
+            }
+        }
+
+        // search
+        function Search() {
+            let input, filter, table, tr, td, i, txtValue;
+            input = document.getElementById("mySearch");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("myTable");
+            tr = table.getElementsByTagName("tr");
+            for (i = 0; i < tr.length; i++) {
+                td = tr[i].getElementsByTagName("td")[1];
+                if (td) {
+                    txtValue = td.textContent || td.innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        // search box
+        function Sbox() {
+            if (document.getElementById('searchbox').style.display == 'block') {
+                document.getElementById('searchbox').style.display = 'none';
+            } else {
+                document.getElementById('searchbox').style.display = 'block';
             }
         }
 
