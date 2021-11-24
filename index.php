@@ -25,8 +25,7 @@ function filename_sanitizer($unsafeFilename)
 {
     // windows characters
     $dangerousCharacters = array("\\", "/", ":", "*", "?", "\"", "<", ">", "|");
-    $safe_filename = str_replace($dangerousCharacters, '', $unsafeFilename);
-    return $safe_filename;
+    return str_replace($dangerousCharacters, '', $unsafeFilename);
 }
 
 // function show alert info
@@ -42,8 +41,7 @@ $dirSize = array_sum(array_map("filesize", glob(dirSave . "*")));
 if (isset($_POST['upload'])) {
     $showstatus = "";
     if ($dirSize <= folderSize) {
-        $amount = count($_FILES['file']['name']);
-        for ($i = 0; $i < $amount; $i++) {
+        for ($i = 0; $i < count($_FILES['file']['name']); $i++) {
             $fileName = filename_sanitizer($_FILES['file']['name'][$i]);
             if ($_FILES['file']['size'][$i] <= maxfileSize) {
                 if (!file_exists(dirSave . $fileName)) {
@@ -77,7 +75,7 @@ if (isset($_GET['delete'])) {
             alertInfo("server error !");
         }
     } else {
-        alertInfo("failed to delete !");
+        alertInfo("file not found !");
     }
 }
 
@@ -85,6 +83,7 @@ if (isset($_GET['delete'])) {
 if (isset($_GET['rename'])) {
     $varOldFile = $_GET['old'];
     $varNewFile = filename_sanitizer($_GET['new']);
+
     if (isset($varOldFile) && isset($varNewFile) && $varNewFile != '') {
         if (!file_exists(dirSave . $varNewFile)) {
             if (file_exists(dirSave . $varOldFile)) {
@@ -107,19 +106,24 @@ if (isset($_GET['rename'])) {
 // when from url
 if (isset($_POST['url'])) {
     $file_url = filter_var($_POST['link'], FILTER_SANITIZE_URL);
+
     if ((empty($file_url)) || (filter_var($file_url, FILTER_VALIDATE_URL) === false)) {
         alertInfo("Invalid URL !");
     }
+
     $file_name = basename(parse_url($file_url, PHP_URL_PATH));
     $file_ext = strtolower(pathinfo($file_url, PATHINFO_EXTENSION));
+
     if (empty($file_name)) {
         alertInfo("Invalid file name !");
     } else {
         $file_name = filename_sanitizer($file_name);
     }
+
     if (strpos($file_ext, '?') !== false) {
         $file_ext = substr($file_ext, 0, strpos($file_ext, '?'));
     }
+
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $file_url);
     curl_setopt($ch, CURLOPT_USERAGENT, $_SERVER['HTTP_USER_AGENT']);
@@ -321,7 +325,7 @@ if ($dirSize == 0) {
             cursor: pointer;
         }
 
-        @media screen and (max-width: 525px) {
+        @media screen and (max-width: 530px) {
             .search {
                 float: none;
                 margin-top: 5px;
@@ -369,7 +373,7 @@ if ($dirSize == 0) {
         </div>
     <?php endif ?>
     <hr>
-    <div style="overflow-x:auto;">
+    <div style="overflow-x: auto;">
         <table style="width: 100%;" id="myTable">
             <tr>
                 <th>No</th>
@@ -401,10 +405,10 @@ if ($dirSize == 0) {
                         <td><?= date("d-M-Y", filemtime(dirSave . $file)) ?></td>
                         <td><?= date("H:i:s", filemtime(dirSave . $file)) ?></td>
                         <td>
-                            <button onclick="window.open('file.php/' + dataName[<?= $no - 1 ?>], '_blank')">View</button>
-                            <button onclick="window.location = 'file.php/' + dataName[<?= $no - 1 ?>] + '?download'">Download</button>
-                            <button onclick="Rename(dataName[<?= $no - 1 ?>])">Rename</button>
-                            <button onclick="Delete(dataName[<?= $no++ - 1 ?>])">Delete</button>
+                            <button onclick="View(<?= $no - 1 ?>)">View</button>
+                            <button onclick="Download(<?= $no - 1 ?>)">Download</button>
+                            <button onclick="Rename(<?= $no - 1 ?>)">Rename</button>
+                            <button onclick="Delete(<?= $no++ - 1 ?>)">Delete</button>
                         </td>
                     </tr>
                 <?php endif ?>
@@ -414,7 +418,7 @@ if ($dirSize == 0) {
     <?php if (!($disabledinput)) : ?>
         <div id="Modalupload" class="modal">
             <div class="modal-content">
-                <span class="close">&times;</span>
+                <span class="close" id="closeUpload">&times;</span>
                 <h2>Upload file</h2>
                 <hr style="margin-bottom: 25px;">
                 <form id="formUploadFile" method="post" enctype="multipart/form-data">
@@ -427,7 +431,7 @@ if ($dirSize == 0) {
         </div>
         <div id="Modalurl" class="modal">
             <div class="modal-content">
-                <span class="close">&times;</span>
+                <span class="close" id="closeUrl">&times;</span>
                 <h2>Save from url</h2>
                 <hr style="margin-bottom: 25px;">
                 <form method="post">
@@ -463,7 +467,10 @@ if ($dirSize == 0) {
             // delete cookie
             document.cookie = 'infofile=; Max-Age=0;';
         <?php endif ?>
-        let dataName = <?= json_encode($dataNameFile) ?>;
+
+        // data name
+        const dataName = [<?= substr(substr(json_encode($dataNameFile), 1), 0, -1) ?>];
+
         <?php if (!($disabledinput)) : ?>
             // validasi
             function fileValidation() {
@@ -500,36 +507,39 @@ if ($dirSize == 0) {
             // modal
             let modalupload = document.getElementById("Modalupload");
             let modalurl = document.getElementById("Modalurl");
-            let span1 = document.getElementsByClassName("close")[0];
-            let span2 = document.getElementsByClassName("close")[1];
+            let spanUpload = document.getElementById("closeUpload");
+            let spanUrl = document.getElementById("closeUrl");
 
-            span1.onclick = function() {
+            spanUpload.onclick = function() {
                 modalupload.style.display = "none";
             }
-            span2.onclick = function() {
+
+            spanUrl.onclick = function() {
                 modalurl.style.display = "none";
             }
 
             window.onclick = function(event) {
                 if (event.target == modalupload) {
                     modalupload.style.display = "none";
-                }
-                if (event.target == modalurl) {
+                } else if (event.target == modalurl) {
                     modalurl.style.display = "none";
                 }
             }
 
         <?php endif ?>
+        // view
+        function View(id) {
+            window.open("file.php/" + dataName[id], "_blank");
+        }
 
-        // delete
-        function Delete(file) {
-            if (confirm("delete this file ? : " + decodeURIComponent(file))) {
-                location.href = "index.php?delete&file=" + file;
-            }
+        // download
+        function Download(id) {
+            location.href = "file.php/" + dataName[id] + "?download";
         }
 
         // rename
-        function Rename(oldnamefile) {
+        function Rename(id) {
+            let oldnamefile = dataName[id];
             let extfile = "." + oldnamefile.substring(oldnamefile.lastIndexOf(".") + 1);
             let newnamefile = prompt("Enter new name (" + extfile + ")", decodeURIComponent(oldnamefile.substring(0, oldnamefile.lastIndexOf('.'))));
             if (newnamefile != null) {
@@ -544,6 +554,14 @@ if ($dirSize == 0) {
                 } else {
                     alert("filename cannot be empty !");
                 }
+            }
+        }
+
+        // delete
+        function Delete(id) {
+            let file = dataName[id];
+            if (confirm("delete this file ? : " + decodeURIComponent(file))) {
+                location.href = "index.php?delete&file=" + file;
             }
         }
 
