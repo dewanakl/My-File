@@ -7,6 +7,7 @@ if (!is_writable(paste)) {
     exit("please change file permissions");
 }
 
+// get date
 function getdateFile()
 {
     return date("D M d Y H:i:s", filemtime(paste));
@@ -174,7 +175,6 @@ if (isset($_POST['text'])) {
         setInterval(function() {
             getDateFile(datef, already);
         }, 10000);
-
 
         // top
         window.onscroll = function() {
