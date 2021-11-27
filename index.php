@@ -180,6 +180,11 @@ if ($dirSize == 0) {
     <title>My-File</title>
     <link rel="icon" type="image/png" href="icon.png">
     <style>
+        /* smooth scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+
         /* scrollbar */
         ::-webkit-scrollbar {
             width: 10px;
@@ -201,8 +206,8 @@ if ($dirSize == 0) {
         #topbtn {
             display: none;
             position: fixed;
-            bottom: 10px;
-            right: 20px;
+            bottom: 15px;
+            right: 25px;
             z-index: 1000;
             font-size: 13px;
             border: none;
@@ -343,7 +348,7 @@ if ($dirSize == 0) {
 </head>
 
 <body>
-    <h2 id="top">My-<i>File</i> | simple storage</h2>
+    <h2>My-<i>File</i> | simple storage</h2>
     <p style="display: block;">Current usage : <?= $usage ?></p>
     <?php if (!($disabledinput)) : ?>
         <button style="display: inline; padding: 7px 14px;" onclick="modalupload.style.display = 'block'">Upload</button>
@@ -450,7 +455,7 @@ if ($dirSize == 0) {
             </div>
         </div>
     <?php endif ?>
-    <a id="topbtn" href="#top" style="text-decoration:none; display: none;">TOP</a>
+    <button type="button" id="topbtn" onclick="topFunction()">TOP</button>
     <hr>
     <footer>
         <p style="text-align: center;">
@@ -595,12 +600,23 @@ if ($dirSize == 0) {
         }
 
         // top
-        window.onscroll = function() {
-            if (document.body.scrollTop > 40 || document.documentElement.scrollTop > 40) {
-                document.getElementById("topbtn").style.display = "block";
+        let mybutton = document.getElementById("topbtn");
+
+        function scrollFunction() {
+            if (document.body.scrollTop > 50 || document.documentElement.scrollTop > 50) {
+                mybutton.style.display = "block";
             } else {
-                document.getElementById("topbtn").style.display = "none";
+                mybutton.style.display = "none";
             }
+        }
+
+        function topFunction() {
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+        }
+
+        window.onscroll = function() {
+            scrollFunction()
         };
     </script>
 </body>
